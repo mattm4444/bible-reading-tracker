@@ -1,7 +1,8 @@
 # Bible Reading Tracker
 
-A one-page Bible reading tracker for the home server. Tap a chapter to check it, tap the
-box beside a book to check the whole book, and it always opens to where you left off.
+A one-page Bible reading tracker for the home server. All 66 books show at once as tiles;
+tap one to open its chapters. Tap a chapter to check it, or tap
+"Mark whole book read" to check them all. It always opens to the book you were last in.
 Progress is saved on the server and backed up to this repo, so it survives the server dying.
 
 ## Install on the server
