@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Bible">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#ffffff">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.json">
+<title>Bible Reading Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,500;7..72,600&family=Source+Sans+3:wght@400;600;700&display=swap">
+<style>
+/* Layout: one column of books grouped by testament; a sticky header carries overall progress and the Continue button. */
+:root {
+  --bg: #f3f4f6;
+  --surface: #ffffff;
+  --fg: #1b2333;
+  --muted: #646c7c;
+  --line: #dde1e8;
+  --accent: #2c4a7a;
+  --accent-fg: #ffffff;
+  --done: #3b7a58;
+  --done-bg: #e2efe7;
+  --done-fg: #ffffff;
+  --font-d: "Literata", Georgia, "Times New Roman", serif;
+  --font-b: "Source Sans 3", -apple-system, system-ui, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161d; --surface: #1b212b; --fg: #e7eaf0; --muted: #9aa3b2; --line: #2c3442;
+    --accent: #8fb0e6; --accent-fg: #0f1520; --done: #6fbf92; --done-bg: #1f3329; --done-fg: #0e1a13;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161d; --surface: #1b212b; --fg: #e7eaf0; --muted: #9aa3b2; --line: #2c3442;
+  --accent: #8fb0e6; --accent-fg: #0f1520; --done: #6fbf92; --done-bg: #1f3329; --done-fg: #0e1a13;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-b); font-size: 16px; line-height: 1.4;
+  -webkit-tap-highlight-color: transparent;
+}
+body::before {
+  content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px);
+  z-index: 10; background: var(--surface);
+}
+.wrap {
+  max-width: 640px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+header.top {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--surface); border-bottom: 1px solid var(--line);
+}
+header.top .wrap { padding-block: 14px 12px; display: grid; gap: 10px; }
+.title-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+h1 { font-family: var(--font-d); font-weight: 600; font-size: 1.3rem; margin: 0; letter-spacing: -0.01em; }
+.total { font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.bar > i { display: block; height: 100%; width: 0; background: var(--done); transition: width .25s; }
+.continue {
+  appearance: none; border: 0; border-radius: 10px; cursor: pointer;
+  background: var(--accent); color: var(--accent-fg);
+  font: 600 1rem var(--font-b); padding: 11px 14px; text-align: left;
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+}
+.continue span:last-child { font-weight: 400; opacity: .85; font-size: .9rem; }
+
+main .wrap { padding-block: 8px 40px; }
+h2 {
+  font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted); margin: 22px 0 8px;
+}
+.books { display: grid; gap: 6px; }
+
+.book {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  scroll-margin-top: 128px;
+}
+.book.is-last { border-color: var(--accent); }
+.bk-head { display: flex; align-items: center; gap: 10px; padding: 4px 6px 4px 4px; }
+.bk-open {
+  flex: 1; min-width: 0; appearance: none; background: none; border: 0; cursor: pointer;
+  color: inherit; text-align: left; padding: 10px 8px; display: grid; gap: 6px;
+}
+.bk-line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.bk-name { font-family: var(--font-d); font-weight: 500; font-size: 1.05rem; }
+.bk-count { font-size: .85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.book.complete .bk-count { color: var(--done); font-weight: 600; }
+.bk-open .bar { height: 4px; }
+
+.bk-all {
+  appearance: none; cursor: pointer; flex: none;
+  width: 44px; height: 44px; border-radius: 10px;
+  border: 2px solid var(--line); background: var(--surface); color: var(--done-fg);
+  display: grid; place-items: center; font-size: 1.2rem; font-weight: 700;
+}
+.bk-all.partial { border-color: var(--done); color: var(--done); }
+.book.complete .bk-all { background: var(--done); border-color: var(--done); }
+.bk-all.confirm { border-color: var(--accent); background: var(--accent); color: var(--accent-fg); font-size: .7rem; line-height: 1.05; padding: 2px; }
+
+.chapters {
+  display: none; padding: 4px 12px 14px;
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 6px;
+}
+.book.open .chapters { display: grid; }
+.ch {
+  appearance: none; cursor: pointer; height: 44px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+  font: 600 .95rem var(--font-b); font-variant-numeric: tabular-nums;
+}
+.ch.on { background: var(--done); border-color: var(--done); color: var(--done-fg); }
+.hint { grid-column: 1 / -1; font-size: .8rem; color: var(--muted); margin: 2px 0 0; }
+
+button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+footer .wrap { padding-block: 0 32px; font-size: .8rem; color: var(--muted); text-align: center; }
+@media (prefers-reduced-motion: reduce) { .bar > i { transition: none; } }
+</style>
+
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)} body{margin:0} [hidden]{display:none!important}</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="title-row">
+      <h1>Bible Reading</h1>
+      <div class="total" id="total">0 of 1,189 chapters</div>
+    </div>
+    <div class="bar" aria-hidden="true"><i id="totalBar"></i></div>
+    <button class="continue" id="continue" type="button"><span id="contLabel">Start in Genesis</span><span id="contSub"></span></button>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <h2>Old Testament</h2>
+    <div class="books" id="ot"></div>
+    <h2>New Testament</h2>
+    <div class="books" id="nt"></div>
+  </div>
+</main>
+<footer><div class="wrap" id="status">Loading your progress…</div></footer>
+
+<script>
+const BOOKS = [
+ ["Genesis",50],["Exodus",40],["Leviticus",27],["Numbers",36],["Deuteronomy",34],["Joshua",24],["Judges",21],["Ruth",4],["1 Samuel",31],["2 Samuel",24],["1 Kings",22],["2 Kings",25],["1 Chronicles",29],["2 Chronicles",36],["Ezra",10],["Nehemiah",13],["Esther",10],["Job",42],["Psalms",150],["Proverbs",31],["Ecclesiastes",12],["Song of Songs",8],["Isaiah",66],["Jeremiah",52],["Lamentations",5],["Ezekiel",48],["Daniel",12],["Hosea",14],["Joel",3],["Amos",9],["Obadiah",1],["Jonah",4],["Micah",7],["Nahum",3],["Habakkuk",3],["Zephaniah",3],["Haggai",2],["Zechariah",14],["Malachi",4],
+ ["Matthew",28],["Mark",16],["Luke",24],["John",21],["Acts",28],["Romans",16],["1 Corinthians",16],["2 Corinthians",13],["Galatians",6],["Ephesians",6],["Philippians",4],["Colossians",4],["1 Thessalonians",5],["2 Thessalonians",3],["1 Timothy",6],["2 Timothy",4],["Titus",3],["Philemon",1],["Hebrews",13],["James",5],["1 Peter",5],["2 Peter",3],["1 John",5],["2 John",1],["3 John",1],["Jude",1],["Revelation",22]
+];
+const TOTAL = 1189;
+const LS_KEY = "bible-tracker-v1";
+const idx = Object.fromEntries(BOOKS.map(([n], i) => [n, i]));
+
+// ---- state ----
+let done = new Map(BOOKS.map(([n]) => [n, new Set()]));
+let last = null;
+let updated = 0;
+let interacted = false;
+
+function serialize() {
+  const d = {};
+  for (const [n, s] of done) if (s.size) d[n] = [...s].sort((a, b) => a - b);
+  return { done: d, last, updated };
+}
+function apply(obj) {
+  done = new Map(BOOKS.map(([n]) => [n, new Set((obj.done && obj.done[n]) || [])]));
+  last = obj.last && idx[obj.last] !== undefined ? obj.last : null;
+  updated = obj.updated || 0;
+}
+try { const raw = localStorage.getItem(LS_KEY); if (raw) apply(JSON.parse(raw)); } catch (e) {}
+
+// ---- DOM ----
+const els = {};
+BOOKS.forEach(([name, n], i) => {
+  const book = document.createElement("section");
+  book.className = "book";
+  book.id = "b" + i;
+  book.innerHTML = `
+    <div class="bk-head">
+      <button class="bk-open" type="button" aria-expanded="false">
+        <span class="bk-line"><span class="bk-name"></span><span class="bk-count"></span></span>
+        <span class="bar" aria-hidden="true"><i></i></span>
+      </button>
+      <button class="bk-all" type="button"></button>
+    </div>
+    <div class="chapters"></div>`;
+  book.querySelector(".bk-name").textContent = name;
+  const grid = book.querySelector(".chapters");
+  const chs = [];
+  for (let c = 1; c <= n; c++) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "ch"; b.textContent = c;
+    b.setAttribute("aria-label", `${name} ${c}`);
+    b.addEventListener("click", () => toggleChapter(name, c));
+    grid.appendChild(b); chs.push(b);
+  }
+  const open = book.querySelector(".bk-open");
+  open.addEventListener("click", () => setOpen(name, !book.classList.contains("open")));
+  const all = book.querySelector(".bk-all");
+  all.addEventListener("click", () => toggleBook(name));
+  document.getElementById(i < 39 ? "ot" : "nt").appendChild(book);
+  els[name] = { book, open, all, chs, count: book.querySelector(".bk-count"), bar: book.querySelector(".bk-open .bar i") };
+});
+
+function count(name) { return done.get(name).size; }
+function chapters(name) { return BOOKS[idx[name]][1]; }
+
+function paintBook(name) {
+  const e = els[name], n = chapters(name), k = count(name), s = done.get(name);
+  e.count.textContent = k === n ? "Done" : `${k} / ${n}`;
+  e.bar.style.width = (k / n * 100) + "%";
+  e.book.classList.toggle("complete", k === n);
+  e.book.classList.toggle("is-last", name === last);
+  e.chs.forEach((b, i) => { const on = s.has(i + 1); b.classList.toggle("on", on); b.setAttribute("aria-pressed", on); });
+  if (!e.all.classList.contains("confirm")) {
+    e.all.classList.toggle("partial", k > 0 && k < n);
+    e.all.textContent = k === n ? "✓" : "";
+    e.all.setAttribute("aria-label", k === n ? `Clear all of ${name}` : `Mark all of ${name} read`);
+  }
+}
+function paintTotals() {
+  let t = 0; for (const s of done.values()) t += s.size;
+  document.getElementById("total").textContent = `${t.toLocaleString()} of 1,189 chapters`;
+  document.getElementById("totalBar").style.width = (t / TOTAL * 100) + "%";
+  const target = continueTarget();
+  const label = document.getElementById("contLabel"), sub = document.getElementById("contSub");
+  if (!target) { label.textContent = "Every chapter read"; sub.textContent = ""; return; }
+  label.textContent = (last ? "Continue in " : "Start in ") + target;
+  const next = nextUnread(target);
+  sub.textContent = next ? `chapter ${next}` : "";
+}
+function paintAll() { BOOKS.forEach(([n]) => paintBook(n)); paintTotals(); }
+
+function nextUnread(name) { const s = done.get(name); for (let c = 1; c <= chapters(name); c++) if (!s.has(c)) return c; return null; }
+function continueTarget() {
+  const start = last ? idx[last] : 0;
+  for (let j = 0; j < BOOKS.length; j++) {
+    const name = BOOKS[(start + j) % BOOKS.length][0];
+    if (count(name) < chapters(name)) return name;
+  }
+  return null;
+}
+
+function setOpen(name, open) {
+  const e = els[name];
+  e.book.classList.toggle("open", open);
+  e.open.setAttribute("aria-expanded", open);
+}
+function goTo(name, smooth) {
+  setOpen(name, true);
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  els[name].book.scrollIntoView({ block: "start", behavior: smooth && !reduce ? "smooth" : "auto" });
+}
+
+// ---- actions ----
+function changed(name) {
+  interacted = true;
+  last = name; updated = Date.now();
+  BOOKS.forEach(([n]) => els[n].book.classList.toggle("is-last", n === last));
+  paintBook(name); paintTotals(); persist();
+}
+function toggleChapter(name, c) {
+  const s = done.get(name);
+  s.has(c) ? s.delete(c) : s.add(c);
+  changed(name);
+}
+const confirmTimers = {};
+function toggleBook(name) {
+  const e = els[name], n = chapters(name), s = done.get(name);
+  if (s.size === n) {
+    if (!e.all.classList.contains("confirm")) {
+      e.all.classList.add("confirm"); e.all.textContent = "Tap to clear";
+      confirmTimers[name] = setTimeout(() => { e.all.classList.remove("confirm"); paintBook(name); }, 3000);
+      return;
+    }
+    clearTimeout(confirmTimers[name]); e.all.classList.remove("confirm");
+    s.clear();
+  } else {
+    for (let c = 1; c <= n; c++) s.add(c);
+  }
+  changed(name);
+}
+document.getElementById("continue").addEventListener("click", () => { const t = continueTarget(); if (t) goTo(t, true); });
+
+// ---- saving: this device instantly, the home server in the background ----
+const statusEl = document.getElementById("status");
+let backupInfo = null;
+const setStatus = t => {
+  let extra = "";
+  if (t === "Saved to the home server" && backupInfo && backupInfo.enabled) {
+    if (backupInfo.error) extra = " · GitHub backup failing";
+    else if (backupInfo.lastAt) extra = " · backed up " + new Date(backupInfo.lastAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    else extra = " · backup pending";
+  }
+  statusEl.textContent = t + extra;
+};
+let saving = false, dirty = false, saveTimer = null, online = false;
+
+function persist() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(serialize())); } catch (e) {}
+  dirty = true; clearTimeout(saveTimer); saveTimer = setTimeout(flush, 500);
+}
+async function flush() {
+  if (saving) { saveTimer = setTimeout(flush, 400); return; }
+  saving = true; dirty = false; setStatus("Saving…");
+  try {
+    const r = await fetch("api/state", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(serialize()) });
+    if (r.status === 409) { const d = await r.json(); backupInfo = d.backup || backupInfo; apply(d); saveLocal(); paintAll(); }
+    else if (!r.ok) throw new Error(r.status);
+    else { const d = await r.json(); backupInfo = d.backup || backupInfo; }
+    online = true; setStatus("Saved to the home server");
+  } catch (e) {
+    online = false; dirty = true;
+    setStatus("Can't reach the home server. Saved on this device; it will catch up.");
+    saveTimer = setTimeout(flush, 10000);
+  }
+  saving = false;
+}
+function saveLocal() { try { localStorage.setItem(LS_KEY, JSON.stringify(serialize())); } catch (e) {} }
+
+async function pull(isFirst) {
+  if (saving || dirty) return;
+  try {
+    const r = await fetch("api/state", { cache: "no-store" });
+    if (!r.ok) throw new Error(r.status);
+    const d = await r.json();
+    backupInfo = d.backup || backupInfo;
+    if ((d.updated || 0) > updated) {
+      apply(d); saveLocal(); paintAll();
+      if (isFirst && !interacted) { const t = continueTarget(); if (t && last) goTo(t, false); }
+    } else if ((d.updated || 0) < updated) { persist(); return; }
+    online = true; setStatus("Saved to the home server");
+  } catch (e) {
+    online = false; setStatus("Can't reach the home server. Saved on this device; it will catch up.");
+  }
+}
+
+paintAll();
+{ const t = continueTarget(); if (t && last) goTo(t, false); }
+setStatus("Connecting to the home server…");
+pull(true);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) pull(false); });
+setInterval(() => { if (!document.hidden) pull(false); }, 20000);
+</script>
+</body>
+</html>

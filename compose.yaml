@@ -1,0 +1,14 @@
+services:
+  bible-tracker:
+    build: .
+    container_name: bible-tracker
+    ports:
+      - "8087:8080"
+    volumes:
+      - ./data:/data
+    environment:
+      # Set these in a .env file next to this one (see .env.example).
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - GITHUB_REPO=${GITHUB_REPO:-}
+      - BACKUP_DELAY_MINUTES=${BACKUP_DELAY_MINUTES:-10}
+    restart: unless-stopped
