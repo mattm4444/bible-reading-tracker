@@ -71,6 +71,10 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 /* header */
 header.top { background: var(--surface); border-bottom: 1px solid var(--line); }
 header.top .wrap { padding-block: 12px; display: grid; gap: 9px; }
+/* iOS Home Screen app: iOS blurs a band about 40px below the status bar, so start the header below it. */
+@media (display-mode: standalone) {
+  @supports (-webkit-touch-callout: none) { header.top .wrap { padding-top: 44px; } }
+}
 .title-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 h1 { font-family: var(--font-d); font-weight: 600; font-size: 1.25rem; margin: 0; letter-spacing: -0.01em; }
 .total { font-size: .85rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
