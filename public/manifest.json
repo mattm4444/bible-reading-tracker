@@ -1,3 +1,3 @@
 { "name": "Bible Reading", "short_name": "Bible", "start_url": "/", "display": "standalone",
-  "background_color": "#f3f4f6", "theme_color": "#2c4a7a",
+  "background_color": "#f3f4f6", "theme_color": "#ffffff",
   "icons": [{ "src": "/icon-180.png", "sizes": "180x180", "type": "image/png" }] }
